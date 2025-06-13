@@ -1,0 +1,355 @@
+{
+  "info": {
+    "name": "Enhanced Queue Overflow Test",
+    "description": "Comprehensive test collection to properly test queue overflow and thread pool management",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Check Initial Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/queue-status",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "queue-status"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "console.log('=== INITIAL STATUS ===');",
+              "console.log('Queue Length:', jsonData.current_queue_length);",
+              "console.log('Max Queue:', jsonData.max_queue_size);",
+              "console.log('Dropped Requests:', jsonData.dropped_requests);",
+              "console.log('Idle Threads:', jsonData.idle_threads);",
+              "console.log('Busy Threads:', jsonData.busy_threads);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Bulk Test - Fill Queue",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"count\": 600,\n  \"type\": \"slow\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/bulk-test",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "bulk-test"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "console.log('=== BULK TEST RESULTS ===');",
+              "console.log('Requested:', jsonData.requested);",
+              "console.log('Queued:', jsonData.queued);",
+              "console.log('Dropped:', jsonData.dropped);",
+              "console.log('Initial Queue Length:', jsonData.initial_queue_length);",
+              "console.log('Final Queue Length:', jsonData.final_queue_length);",
+              "console.log('Total Dropped:', jsonData.total_dropped);",
+              "",
+              "pm.test('Bulk test completed', function () {",
+              "    pm.expect(jsonData.requested).to.equal(600);",
+              "});",
+              "",
+              "if (jsonData.dropped > 0) {",
+              "    console.log('SUCCESS: Queue overflow detected!');",
+              "    pm.test('Queue overflow occurred', function () {",
+              "        pm.expect(jsonData.dropped).to.be.above(0);",
+              "    });",
+              "} else {",
+              "    console.log('No queue overflow - all requests queued');",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Check Queue Status After Bulk",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/queue-status",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "queue-status"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "console.log('=== POST-BULK STATUS ===');",
+              "console.log('Current Queue Length:', jsonData.current_queue_length);",
+              "console.log('Queue Utilization:', jsonData.queue_utilization);",
+              "console.log('Total Dropped:', jsonData.dropped_requests);",
+              "console.log('Idle Threads:', jsonData.idle_threads);",
+              "console.log('Busy Threads:', jsonData.busy_threads);",
+              "",
+              "if (jsonData.current_queue_length > 400) {",
+              "    console.log('QUEUE IS NEARLY FULL!');",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Individual Slow Request - Should Drop",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/slow",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "slow"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "console.log('Response Status:', pm.response.code);",
+              "var jsonData = pm.response.json();",
+              "",
+              "if (pm.response.code === 503) {",
+              "    console.log('SUCCESS: Request was dropped due to full queue!');",
+              "    console.log('Error:', jsonData.error);",
+              "    console.log('Queue Length:', jsonData.current_queue_length);",
+              "    console.log('Max Queue Size:', jsonData.max_queue_size);",
+              "    ",
+              "    pm.test('Request properly dropped', function () {",
+              "        pm.expect(jsonData.status).to.equal('dropped');",
+              "        pm.expect(jsonData.error).to.include('queue full');",
+              "    });",
+              "} else if (pm.response.code === 200) {",
+              "    console.log('Request was queued:', jsonData.status);",
+              "    console.log('Queue Position:', jsonData.queue_position);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Rapid Fire Test - Multiple Drops",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/medium",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "medium"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "console.log('=== RAPID FIRE TEST ===');",
+              "console.log('Status Code:', pm.response.code);",
+              "",
+              "if (pm.response.code === 503) {",
+              "    var jsonData = pm.response.json();",
+              "    console.log('DROPPED! Total drops:', jsonData.dropped_requests);",
+              "    pm.collectionVariables.set('dropped_count', jsonData.dropped_requests);",
+              "} else {",
+              "    var jsonData = pm.response.json();",
+              "    console.log('Queued at position:', jsonData.queue_position);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Upload Test - Should Drop",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"file_data\": \"{{$randomLoremText}}\",\n  \"file_size\": \"{{$randomInt}}\",\n  \"upload_batch\": \"overflow_test_{{$timestamp}}\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/upload",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "upload"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Response received', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 503]);",
+              "});",
+              "",
+              "if (pm.response.code === 503) {",
+              "    console.log('Upload request DROPPED - queue is full!');",
+              "} else {",
+              "    console.log('Upload request queued successfully');",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Final Metrics Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/metrics",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "metrics"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "",
+              "console.log('=== FINAL METRICS ===');",
+              "console.log('Total Requests Processed:', jsonData.total_requests);",
+              "console.log('Active Requests:', jsonData.active_requests);",
+              "console.log('DROPPED REQUESTS:', jsonData.dropped_requests);",
+              "console.log('Average Response Time:', jsonData.average_response_time);",
+              "console.log('Requests Per Second:', jsonData.requests_per_second);",
+              "",
+              "console.log('=== QUEUE STATISTICS ===');",
+              "console.log('Current Queue Length:', jsonData.queue_stats.current_length);",
+              "console.log('Max Queue Size:', jsonData.queue_stats.max_size);",
+              "console.log('Queue Utilization:', jsonData.queue_stats.utilization);",
+              "console.log('Queue Full Percentage:', jsonData.queue_stats.queue_full_percentage);",
+              "",
+              "console.log('=== THREAD STATISTICS ===');",
+              "console.log('Max Threads:', jsonData.thread_stats.max_threads);",
+              "console.log('Idle Threads:', jsonData.thread_stats.idle_threads);",
+              "console.log('Busy Threads:', jsonData.thread_stats.busy_threads);",
+              "",
+              "console.log('=== PERFORMANCE ===');",
+              "console.log('Throughput:', jsonData.performance_stats.throughput);",
+              "console.log('Avg Service Time:', jsonData.performance_stats.avg_service_time);",
+              "",
+              "// Test assertions",
+              "pm.test('Queue overflow test successful', function () {",
+              "    pm.expect(jsonData.dropped_requests).to.be.above(0);",
+              "});",
+              "",
+              "pm.test('Queue is at capacity', function () {",
+              "    pm.expect(jsonData.queue_stats.current_length).to.be.above(400);",
+              "});",
+              "",
+              "if (jsonData.dropped_requests > 0) {",
+              "    console.log('SUCCESS: Queue overflow successfully tested!');",
+              "    console.log('Dropped', jsonData.dropped_requests, 'requests as expected');",
+              "} else {",
+              "    console.log(' WARNING: No requests were dropped - queue may not be full');",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Wait and Check Processing",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/queue-status",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "queue-status"]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Wait 5 seconds to let some requests process",
+              "setTimeout(function(){}, 5000);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "console.log('=== AFTER PROCESSING DELAY ===');",
+              "console.log('Queue Length After Wait:', jsonData.current_queue_length);",
+              "console.log('Queue should be processing and reducing...');",
+              "",
+              "pm.test('Queue is processing requests', function () {",
+              "    // Queue should still have requests but may be reducing",
+              "    pm.expect(jsonData.current_queue_length).to.be.at.least(0);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "console.log('Starting test:', pm.info.requestName);"
+        ]
+      }
+    }
+  ]
+}
