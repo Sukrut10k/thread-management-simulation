@@ -122,4 +122,18 @@ Contributions are welcome! Please follow these steps:
 4. Push to the branch (`git push origin feature/your-feature`)
 5. Create a new Pull Request
 
+##  Author
+
+**Sukrut Kulkarni**
+- Email: k.sukrut1010@gmail.com
+
+## Support
+
+If you encounter any issues or have questions:
+
+1. **Open an Issue** on GitHub
+2. **Contact**: k.sukrut1010@gmail.com
+
+---
+
 **⭐ Star this repository if you find it helpful!**
