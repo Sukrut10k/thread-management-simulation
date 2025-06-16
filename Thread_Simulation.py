@@ -12,7 +12,7 @@ import psutil
 import os
 import uuid
 
-# Enhanced metrics for comprehensive monitoring
+# Metrics for comprehensive monitoring
 class ServerMetrics:
     def __init__(self, max_threads=10, queue_size=500):
         # Basic metrics
@@ -30,7 +30,7 @@ class ServerMetrics:
         self.busy_threads = 0
         self.thread_states = deque(maxlen=100)
         
-        # Queue management - Fixed Implementation
+        # Queue management
         self.queue_size = queue_size
         self.request_queue = Queue(maxsize=queue_size)
         self.current_queue_length = 0
@@ -211,11 +211,11 @@ class ServerMetrics:
             'throughput': len(self.response_times) / max(1, time.time() - self.start_time)
         }
 
-# Create Flask app and enhanced metrics
+# Create Flask app 
 app = Flask(__name__)
 metrics = ServerMetrics(max_threads=10, queue_size=500)
 
-# Fixed decorator to properly handle queuing
+# Decorator to properly handle queuing
 def track_performance_with_queue(endpoint_type='medium'):
     def decorator(f):
         def wrapper(*args, **kwargs):
@@ -261,7 +261,7 @@ def track_performance_with_queue(endpoint_type='medium'):
         return wrapper
     return decorator
 
-# API Endpoints with proper queue integration
+# API Endpoints with queue integration
 @app.route('/api/fast', methods=['GET'])
 @track_performance_with_queue('fast')
 def fast_endpoint():
@@ -290,7 +290,7 @@ def upload_endpoint():
 @track_performance_with_queue('medium')
 def error_endpoint():
     """Error simulation - queued processing"""
-    if random.random() < 0.3:  # 30% chance of error
+    if random.random() < 0.3: 
         return {"error": "Simulated error"}, 500
     return {"message": "No error occurred"}
 
@@ -427,7 +427,7 @@ curl http://localhost:5000/api/queue-status
     </script>
     '''
 
-# Enhanced monitoring with proper queue visualization
+# Monitoring with proper queue visualization
 def start_enhanced_monitoring():
     """Start comprehensive performance monitoring dashboard"""
     fig = plt.figure(figsize=(20, 12))
@@ -484,7 +484,7 @@ def start_enhanced_monitoring():
         ax_cpu.set_ylabel('Active Threads')
         ax_cpu.set_xticks(range(metrics.cpu_count))
         
-        # 3. Queue Status - FIXED
+        # 3. Queue Status
         if current_queue_length > 0 or metrics.queue_size > 0:
             queue_used = current_queue_length
             queue_available = max(0, metrics.queue_size - current_queue_length)
@@ -540,7 +540,7 @@ def start_enhanced_monitoring():
         ax_total.set_title('Total Processed Requests')
         ax_total.axis('off')
         
-        # 9. Queue Theory Visualization - FIXED
+        # 9. Queue Theory Visualization
         if len(metrics.queue_history) > 1:
             time_points = range(len(list(metrics.queue_history)[-50:]))
             queue_lengths = list(metrics.queue_history)[-50:]
@@ -601,7 +601,6 @@ def run_server_with_enhanced_monitoring():
     print('curl -X POST http://localhost:5000/api/bulk-test -H "Content-Type: application/json" -d \'{"count": 600, "type": "slow"}\'')
     print("curl http://localhost:5000/api/queue-status")
     print("\nClose the matplotlib window to stop the server.")
-    
     # Run monitoring in main thread (required for matplotlib GUI)
     start_enhanced_monitoring()
 
